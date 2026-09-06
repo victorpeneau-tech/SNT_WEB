@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Compteur de clics</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="page-shell">
+    <section class="counter-panel" aria-labelledby="page-title">
+      <p class="eyebrow">Mini expérience web</p>
+      <h1 id="page-title">Compteur de clics</h1>
+      <p class="intro">Chaque clic est enregistré par le serveur et conservé dans une base locale.</p>
+
+      <div class="count-display" aria-live="polite">
+        <span id="click-count">0</span>
+        <span class="count-label">clics enregistrés</span>
+      </div>
+
+      <button id="click-button" type="button">Enregistrer un clic</button>
+      <p id="status" class="status" role="status"></p>
+    </section>
+  </main>
+  <script>
+    const countElement = document.querySelector('#click-count');
+    const button = document.querySelector('#click-button');
+    const statusElement = document.querySelector('#status');
+
+    async function loadCount() {
+      const response = await fetch('/api/count');
+      if (!response.ok) throw new Error('Impossible de charger le compteur.');
+      const data = await response.json();
+      countElement.textContent = data.count;
+    }
+
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      statusElement.textContent = 'Enregistrement...';
+
+      try {
+        const response = await fetch('/api/click', { method: 'POST' });
+        if (!response.ok) throw new Error('Le clic n’a pas pu être enregistré.');
+        const data = await response.json();
+        countElement.textContent = data.count;
+        statusElement.textContent = 'Clic enregistré.';
+      } catch (error) {
+        statusElement.textContent = error.message;
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    loadCount().catch((error) => {
+      statusElement.textContent = error.message;
+    });
+  </script>
+</body>
+</html>
