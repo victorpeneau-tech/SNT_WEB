@@ -1,4 +1,4 @@
-# Compteur de clics
+# Page exemple
 
 Petite page web exemple pour les secondes 7 et 9
 
