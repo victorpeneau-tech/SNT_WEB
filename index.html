@@ -58,7 +58,7 @@
 
       // simple auto-reply simulation (optional)
       setTimeout(() => {
-        appendMessage('Réponse automatique : ' + text, 'received');
+        appendMessage('Chat JS : ' + text, 'received');
       }, 700);
     });
 
@@ -188,11 +188,7 @@
       ctx.save();
       ctx.translate(ball.x, ball.y);
       ctx.rotate(ball.angle);
-      // ball shadow
-      ctx.beginPath();
-      ctx.ellipse(0, ball.radius + 6, ball.radius * 0.9, ball.radius * 0.35, 0, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(0,0,0,0.12)';
-      ctx.fill();
+  
 
       // ball body
       ctx.beginPath();
@@ -200,11 +196,7 @@
       ctx.fillStyle = '#25D366';
       ctx.fill();
 
-      // highlight
-      ctx.beginPath();
-      ctx.arc(-8, -8, 6, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(255,255,255,0.6)';
-      ctx.fill();
+    
 
       ctx.restore();
 
