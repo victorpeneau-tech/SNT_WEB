@@ -2,47 +2,232 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <title>Compteur de clics</title>
+  <title>Messagerie & Mini-jeu</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <h1>Compteur de clics</h1>
-  <p>Nombre de clics : <span id="click-count">0</span></p>
-  <button id="click-button" type="button">Cliquer</button>
-  <p id="status" role="status"></p>
+  <header class="app-header">
+    <h1>SNT — Messagerie</h1>
+    <button id="launch-game">Lancer le mini-jeu</button>
+  </header>
+
+  <main class="chat-container">
+    <div id="chat" class="chat-window" aria-live="polite"></div>
+
+    <form id="chat-form" class="chat-form" action="#" onsubmit="return false;">
+      <input id="message-input" type="text" placeholder="Écrire un message..." autocomplete="off">
+      <button id="send-button" type="button">Envoyer</button>
+    </form>
+  </main>
+
+  <!-- Mini-jeu : canvas caché par défaut -->
+  <div id="game-overlay" class="game-overlay hidden" role="dialog" aria-modal="true">
+    <div class="game-box">
+      <div class="game-header">
+        <h2>Mini-jeu — Boule</h2>
+        <button id="close-game">Fermer</button>
+      </div>
+      <canvas id="game-canvas" width="600" height="360"></canvas>
+      <p class="game-instructions">Utilise les flèches gauche/droite pour rouler, flèche haut pour sauter.</p>
+    </div>
+  </div>
 
   <script>
-    const countElement = document.querySelector('#click-count');
-    const button = document.querySelector('#click-button');
-    const statusElement = document.querySelector('#status');
+    // Chat functionality
+    const chat = document.getElementById('chat');
+    const input = document.getElementById('message-input');
+    const sendBtn = document.getElementById('send-button');
+    const form = document.getElementById('chat-form');
 
-    async function loadCount() {
-      const response = await fetch('/api/count');
-      if (!response.ok) throw new Error('Impossible de charger le compteur.');
-      const data = await response.json();
-      countElement.textContent = data.count;
+    function appendMessage(text, type = 'sent') {
+      const msg = document.createElement('div');
+      msg.className = 'message ' + (type === 'sent' ? 'message-sent' : 'message-received');
+      msg.textContent = text;
+      chat.appendChild(msg);
+      chat.scrollTop = chat.scrollHeight;
     }
 
-    button.addEventListener('click', async () => {
-      button.disabled = true;
-      statusElement.textContent = 'Enregistrement...';
+    sendBtn.addEventListener('click', () => {
+      const text = input.value.trim();
+      if (!text) return;
+      appendMessage(text, 'sent');
+      input.value = '';
+      input.focus();
 
-      try {
-        const response = await fetch('/api/click', { method: 'POST' });
-        if (!response.ok) throw new Error('Erreur lors de l’enregistrement.');
-        const data = await response.json();
-        countElement.textContent = data.count;
-        statusElement.textContent = 'Clic enregistré';
-      } catch (error) {
-        statusElement.textContent = error.message;
-      } finally {
-        button.disabled = false;
+      // simple auto-reply simulation (optional)
+      setTimeout(() => {
+        appendMessage('Réponse automatique : ' + text, 'received');
+      }, 700);
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        sendBtn.click();
       }
     });
 
-    loadCount().catch((error) => {
-      statusElement.textContent = error.message;
+    // Mini-game launch
+    const launchGameBtn = document.getElementById('launch-game');
+    const gameOverlay = document.getElementById('game-overlay');
+    const closeGameBtn = document.getElementById('close-game');
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+
+    launchGameBtn.addEventListener('click', () => {
+      gameOverlay.classList.remove('hidden');
+      startGame();
     });
+    closeGameBtn.addEventListener('click', stopGame);
+
+    // Simple ball physics game
+    let running = false;
+    let keys = { left: false, right: false, up: false };
+    let ball = {
+      x: 80,
+      y: 260,
+      vx: 0,
+      vy: 0,
+      radius: 24,
+      angle: 0
+    };
+    const gravity = 0.9;
+    const groundY = canvas.height - 40;
+
+    function resetBall() {
+      ball.x = 80; ball.y = groundY - ball.radius; ball.vx = 0; ball.vy = 0; ball.angle = 0;
+    }
+
+    function startGame() {
+      if (running) return;
+      running = true;
+      resetBall();
+      window.addEventListener('keydown', onKeyDown);
+      window.addEventListener('keyup', onKeyUp);
+      requestAnimationFrame(loop);
+    }
+
+    function stopGame() {
+      running = false;
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      gameOverlay.classList.add('hidden');
+    }
+
+    function onKeyDown(e) {
+      if (e.key === 'ArrowLeft') keys.left = true;
+      if (e.key === 'ArrowRight') keys.right = true;
+      if (e.key === 'ArrowUp') keys.up = true;
+    }
+    function onKeyUp(e) {
+      if (e.key === 'ArrowLeft') keys.left = false;
+      if (e.key === 'ArrowRight') keys.right = false;
+      if (e.key === 'ArrowUp') keys.up = false;
+    }
+
+    function loop() {
+      if (!running) return;
+
+      // controls
+      if (keys.left) {
+        ball.vx -= 0.4;
+      }
+      if (keys.right) {
+        ball.vx += 0.4;
+      }
+      if (keys.up) {
+        // jump if on ground
+        if (Math.abs((ball.y + ball.radius) - groundY) < 1) {
+          ball.vy = -14;
+        }
+      }
+
+      // physics
+      ball.vy += gravity * 0.6;
+      ball.x += ball.vx;
+      ball.y += ball.vy;
+
+      // floor collision
+      if (ball.y + ball.radius > groundY) {
+        ball.y = groundY - ball.radius;
+        ball.vy *= -0.4; // bounce
+        // friction
+        ball.vx *= 0.88;
+      }
+
+      // walls
+      if (ball.x - ball.radius < 10) {
+        ball.x = 10 + ball.radius;
+        ball.vx *= -0.5;
+      }
+      if (ball.x + ball.radius > canvas.width - 10) {
+        ball.x = canvas.width - 10 - ball.radius;
+        ball.vx *= -0.5;
+      }
+
+      // rotation to simulate rolling
+      ball.angle += ball.vx * 0.06;
+
+      // damping to keep numbers reasonable
+      ball.vx *= 0.995;
+
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // ground
+      ctx.fillStyle = '#e9f5ea';
+      ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+
+      // draw ball with simple shading
+      ctx.save();
+      ctx.translate(ball.x, ball.y);
+      ctx.rotate(ball.angle);
+      // ball shadow
+      ctx.beginPath();
+      ctx.ellipse(0, ball.radius + 6, ball.radius * 0.9, ball.radius * 0.35, 0, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,0,0,0.12)';
+      ctx.fill();
+
+      // ball body
+      ctx.beginPath();
+      ctx.arc(0, 0, ball.radius, 0, Math.PI * 2);
+      ctx.fillStyle = '#25D366';
+      ctx.fill();
+
+      // highlight
+      ctx.beginPath();
+      ctx.arc(-8, -8, 6, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.fill();
+
+      ctx.restore();
+
+      // simple ground line
+      ctx.beginPath();
+      ctx.moveTo(0, groundY);
+      ctx.lineTo(canvas.width, groundY);
+      ctx.strokeStyle = '#cfd8cf';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // ensure canvas resizes a bit on small screens
+    function resizeCanvas() {
+      const wrapper = canvas.parentElement;
+      const maxW = Math.min(window.innerWidth - 40, 900);
+      canvas.width = Math.max(480, Math.min(800, maxW));
+      // keep same height ratio
+      canvas.height = Math.floor(canvas.width * 0.6);
+    }
+    window.addEventListener('resize', () => {
+      resizeCanvas();
+    });
+    resizeCanvas();
   </script>
 </body>
 </html>
